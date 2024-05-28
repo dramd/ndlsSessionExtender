@@ -10,7 +10,7 @@ namespace db {
     static auto defaultCollate (const char* str1, int len1, const char* str2, int len2) -> int
     {
         int result = memcmp (str1, str2, std::min (len1, len2));
-        return sgn (result ?: (len1 - len2));
+        return sgn (result ? result : (len1 - len2));
     }
 
     static auto parseDigits (const char* str, const char* end) -> unsigned
@@ -20,7 +20,7 @@ namespace db {
         {
             if (!isdigit (*str))
                 return 0;
-            result = 10 * result + digittoint (*str);
+            result = 10 * result + int((*str) - '0');
         }
         return result;
     }
@@ -54,7 +54,8 @@ namespace db {
             return defaultCollate (rev1, len1, rev2, len2);
 
         // Compare generation numbers; if they match, compare suffixes:
-        return sgn (gen1 - gen2) ?: defaultCollate (dash1 + 1, len1 - (int)(dash1 + 1 - rev1), dash2 + 1, len2 - (int)(dash2 + 1 - rev2));
+        int result = sgn (gen1 - gen2);
+        return result ? result : defaultCollate (dash1 + 1, len1 - (int)(dash1 + 1 - rev1), dash2 + 1, len2 - (int)(dash2 + 1 - rev2));
     }
 
     auto getViewTableCreate (const int id) -> juce::String
