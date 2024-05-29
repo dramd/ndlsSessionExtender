@@ -262,7 +262,6 @@ void MainComponent::syncUiState()
     {
         editor_username.setEnabled(true);
         editor_username.setTextToShowWhenEmpty("Username", juce::Colours::grey);
-        juce::var document = db->getLocalDocument("ActiveSession");
 
         juce::String username = editor_username.getText();
         btn_apply.setEnabled(username.isNotEmpty());
