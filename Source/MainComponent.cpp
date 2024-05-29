@@ -1,8 +1,14 @@
 #include "MainComponent.h"
 #include "CouchbaseLite.h"
 
-static juce::File getEndlesssGlobalDatabase() {
+static juce::File getEndlesssGlobalDatabase() 
+{
     return juce::File::getSpecialLocation(juce::File::SpecialLocationType::userApplicationDataDirectory).getChildFile("Endlesss").getChildFile("production").getChildFile("Data").getChildFile("global.cblite2");
+};
+
+static juce::File getGlobalDatabasePrototype()
+{
+    return juce::File::getSpecialLocation(juce::File::SpecialLocationType:: currentApplicationFile).getChildFile("db.sqlite3");
 };
 /** Someone should have invented a new endlesss by now */
 static juce::Time getY2038() { return { 2038, 1, 19,  3,  14,  7, 0, false }; }
@@ -105,6 +111,18 @@ createActiveSession
     return juce::Result::fail("Session document could not be updated");
 }
 
+static
+void
+copyPrototypeDbWithBackup
+(
+    juce::File source,
+    juce::File destination
+) { 
+    juce::File destination_backup = destination.withFileExtension(".sqlite3.backup");
+    destination.copyFileTo(destination_backup);
+
+    source.copyFileTo(destination);
+}
 
 
 //==============================================================================
@@ -136,7 +154,8 @@ MainComponent::MainComponent()
                     return;
                 }
 
-                //juce::Result updateResult = updateActiveSession();
+                copyPrototypeDbWithBackup(getGlobalDatabasePrototype(), getEndlesssGlobalDatabase().getChildFile("db.sqlite3"));
+
                 juce::Result updateResult = createActiveSession(*db, editor_username.getText());
 
                 
