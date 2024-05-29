@@ -162,11 +162,7 @@ namespace db {
 
         if ( js1.starts_with( "\"" ) )
         {
-#ifdef _MSC_VER
             const auto cmp = std::lexicographical_compare_three_way( js1.begin( ), js1.end( ), js2.begin( ), js2.end( ) );
-#else
-            const auto cmp = std::lexicographical_compare_three_way( js1.begin( ), js1.end( ), js2.begin( ), js2.end( ), cmp_icase );
-#endif
             return ( cmp < 0 ) ? -1 : ( ( cmp == 0 ) ? 0 : 1 );
         }
         

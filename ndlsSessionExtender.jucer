@@ -2,7 +2,7 @@
 
 <JUCERPROJECT id="L1c8oG" name="ndlsSessionExtender" projectType="guiapp" useAppConfig="0"
               addUsingNamespaceToJuceHeader="0" jucerFormatVersion="1" cppLanguageStandard="latest"
-              headerPath="../../3rdParty/sqlite_modern_cpp/hdr&#10;../../3rdParty/sqlite3">
+              headerPath="../../3rdParty/sqlite_modern_cpp/hdr&#10;../../3rdParty/sqlite3&#10;../../3rdParty/json/include">
   <MAINGROUP id="cZFuPD" name="ndlsSessionExtender">
     <GROUP id="{F38B4EBF-3AD5-B590-A857-A738A8BAB855}" name="Source">
       <FILE id="a0jz2B" name="Sqlite3Almagamation.c" compile="1" resource="0"
