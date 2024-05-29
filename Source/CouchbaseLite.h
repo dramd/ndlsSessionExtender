@@ -16,7 +16,7 @@ namespace db {
         auto getDocument (const juce::String& docId) -> juce::var;
 
         auto getLocalDocument (const juce::String& docId) -> juce::var;
-        auto setLocalDocument (juce::var doc) -> void;
+        auto setLocalDocument (juce::var doc) -> int;
 
         auto getAttachments (const juce::var& doc) -> juce::StringArray;
         auto getAttachment (const juce::var& doc, const juce::String& attachmentId) -> juce::File;

@@ -82,6 +82,29 @@ createSession
     return juce::var(obj);
 }
 
+static
+juce::Result
+createActiveSession
+(
+    db::CouchbaseLiteDatabase &db,
+    juce::String               user_id
+) {
+    juce::var session_data = createSession(user_id);
+
+    juce::DynamicObject *doc_obj = session_data.getDynamicObject();
+    doc_obj->setProperty("_id", "ActiveSession");
+    doc_obj->setProperty("_rev", "10000-local");
+
+    int const num_rows_modified = db.setLocalDocument(session_data);
+
+    if (num_rows_modified > 0)
+    {
+        return juce::Result::ok();
+    }
+
+    return juce::Result::fail("Session document could not be updated");
+}
+
 
 
 //==============================================================================
@@ -94,10 +117,10 @@ MainComponent::MainComponent()
     if(getEndlesssGlobalDatabase().exists())
     {
         db = std::make_unique<db::CouchbaseLiteDatabase>(getEndlesssGlobalDatabase());
-        setupButtonText();
+        syncUiState();
     }
     
-    bigRedButton.onClick = [this] 
+    btn_apply.onClick = [this] 
     {
         if(db)
         {
@@ -113,15 +136,32 @@ MainComponent::MainComponent()
                     return;
                 }
 
-                juce::Result updateResult = updateActiveSession();
+                //juce::Result updateResult = updateActiveSession();
+                juce::Result updateResult = createActiveSession(*db, editor_username.getText());
+
+                
+                juce::MessageBoxOptions opts;
+
                 if(updateResult.failed())
                 {
-                    DBG(updateResult.getErrorMessage());
+                    opts = opts.withIconType(juce::MessageBoxIconType::WarningIcon)
+                    .withTitle("Error")
+                    .withMessage(updateResult.getErrorMessage())
+                    .withButton("OK")
+                    .withAssociatedComponent(this);
                 }
                 else
                 {
-                    setupButtonText();
+                    opts = opts.withIconType(juce::MessageBoxIconType::InfoIcon)
+                    .withTitle("Success")
+                    .withMessage("Session document updated")
+                    .withButton("OK")
+                    .withAssociatedComponent(this);
                 }
+
+                juce::NativeMessageBox::showAsync(opts, nullptr);
+
+                syncUiState();
             };
             
             juce::NativeMessageBox::showAsync
@@ -155,33 +195,63 @@ MainComponent::MainComponent()
                 if(databaseFile.exists())
                 {
                     db = std::make_unique<db::CouchbaseLiteDatabase>(databaseFile);
-                    setupButtonText();
+                    syncUiState();
                 }
             });
         }
     };
-    setupButtonText();
-    addAndMakeVisible(bigRedButton);
+
+    addAndMakeVisible(btn_apply);
+    addAndMakeVisible(editor_username);
+
+    auto editor_username_callback = [this]()
+    {
+        syncUiState();
+    };
+
+    editor_username.onTextChange = editor_username_callback;
+    editor_username.onReturnKey  = editor_username_callback;
+    editor_username.onEscapeKey  = editor_username_callback;
+    editor_username.onFocusLost  = editor_username_callback;
+    
+    editor_username.setJustification(juce::Justification::centred);
+
+    
+    btn_apply.setColour(juce::TextButton::ColourIds::buttonColourId,   juce::Colours::darkgrey);
+    btn_apply.setColour(juce::TextButton::ColourIds::buttonOnColourId, juce::Colours::dimgrey);
+    btn_apply.setColour(juce::TextButton::ColourIds::textColourOffId,  juce::Colours::white);
+    btn_apply.setColour(juce::TextButton::ColourIds::textColourOnId,   juce::Colours::white);
+
+
+    syncUiState();
 }
 
 MainComponent::~MainComponent()
 {
 }
 
-void MainComponent::setupButtonText()
+void MainComponent::syncUiState()
 {
     if(db)
     {
+        editor_username.setEnabled(true);
+        editor_username.setTextToShowWhenEmpty("Username", juce::Colours::grey);
         juce::var document = db->getLocalDocument("ActiveSession");
-        if(document.isObject() && document.hasProperty("user_id"))
-        {
-            juce::Time expiry { juce::int64(document["expires"]) };
-            bigRedButton.setButtonText(document["user_id"].toString() + ": " + expiry.toISO8601(true));
-        }
+
+        juce::String username = editor_username.getText();
+        btn_apply.setEnabled(username.isNotEmpty());
+
+        btn_apply.setButtonText
+        (
+            username.isNotEmpty() ? "Create session for " + editor_username.getText()
+                                  : "Enter your username in the textbox above"
+        );
     }
     else
     {
-        bigRedButton.setButtonText("Browse for global.cblite2");
+        editor_username.setEnabled(false);
+        editor_username.setTextToShowWhenEmpty("Use the button below to browse for your local database file", juce::Colours::grey);
+        btn_apply.setButtonText("Browse for global.cblite2");
     }
 }
 
@@ -212,5 +282,10 @@ void MainComponent::paint (juce::Graphics& g)
 
 void MainComponent::resized()
 {
-    bigRedButton.setBounds(getLocalBounds());
+    juce::Rectangle<int> r = getLocalBounds();
+
+    editor_username.setBounds(r.removeFromTop(32));
+    r.removeFromTop(32);
+    r.reduce(16, 16);
+    btn_apply.setBounds(r);
 }

@@ -155,7 +155,7 @@ namespace db {
         return { string.begin(), string.end() };
     }
 
-    auto CouchbaseLiteDatabase::setLocalDocument (juce::var document) -> void
+    auto CouchbaseLiteDatabase::setLocalDocument (juce::var document) -> int
     {
         if(document.hasProperty("_id") && document.hasProperty("_rev"))
         {
@@ -170,11 +170,14 @@ namespace db {
             auto jsonBlob = toSqliteBlob(juce::JSON::toString(document, true).toStdString());
             db << "INSERT INTO localdocs (docid, revid, json) values (?,?,?) ON CONFLICT DO UPDATE SET json=? WHERE docid=?" << docId.toStdString() << revId.toStdString() << jsonBlob << jsonBlob << docId.toStdString();
             
+            int const rows_modified = db.rows_modified();
             DBG(db.rows_modified() << " Rows Modified");
+            return rows_modified;
         }
         else
         {
             jassertfalse;
+            return 0;
         }
     }
 

@@ -17,12 +17,13 @@ public:
     void paint (juce::Graphics&) override;
     void resized() override;
     
-    void setupButtonText();
+    void syncUiState();
 
     juce::Result updateActiveSession();
 
 private:
-    juce::TextButton bigRedButton { "Go!" };
+    juce::TextEditor editor_username; 
+    juce::TextButton btn_apply { "Go!" };
     std::unique_ptr<db::CouchbaseLiteDatabase> db;
     std::unique_ptr<juce::FileChooser> fileChooser;
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (MainComponent)
