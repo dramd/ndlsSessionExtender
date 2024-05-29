@@ -1,6 +1,48 @@
 #include <ranges>
 #include <sqlite3.h>
 #include "CouchbaseLite.h"
+#include "nlohmann/json.hpp"
+
+#include <string_view>
+#include <charconv>
+#include <sstream>
+#include <algorithm>
+#include <compare>
+
+// @echolox: Note sure about this for your version of Clang, I needed it back in the day
+#ifndef _MSC_VER
+
+std::strong_ordering cmp_icase(unsigned char x, unsigned char y)
+{
+    return std::toupper(x) <=> std::toupper(y);
+};
+
+namespace std
+{
+    template<class I1, class I2, class Cmp>
+    constexpr auto lexicographical_compare_three_way(I1 f1, I1 l1, I2 f2, I2 l2, Cmp comp)
+        -> decltype(comp(*f1, *f2))
+    {
+        using ret_t = decltype(comp(*f1, *f2));
+        static_assert(std::disjunction_v<
+                          std::is_same<ret_t, std::strong_ordering>,
+                          std::is_same<ret_t, std::weak_ordering>,
+                          std::is_same<ret_t, std::partial_ordering>>,
+                      "The return type must be a comparison category type.");
+     
+        bool exhaust1 = (f1 == l1);
+        bool exhaust2 = (f2 == l2);
+        for (; !exhaust1 && !exhaust2; exhaust1 = (++f1 == l1), exhaust2 = (++f2 == l2))
+            if (auto c = comp(*f1, *f2); c != 0)
+                return c;
+     
+        return !exhaust1 ? std::strong_ordering::greater:
+               !exhaust2 ? std::strong_ordering::less:
+                           std::strong_ordering::equal;
+    }
+}
+#endif
+
 namespace db {
     static inline auto sgn (int n) -> int
     {
@@ -24,6 +66,146 @@ namespace db {
         }
         return result;
     }
+
+
+    static int32_t defaultCollate( std::string_view rev1, std::string_view rev2 ) 
+    {
+        return defaultCollate(rev1.data(), rev1.length(), rev2.data(), rev2.length());
+    }
+
+    int32_t collateRevisions( void* data, int rev1_len, const void* rev1_data, int rev2_len, const void* rev2_data )
+    {
+        auto rev1 = std::string_view( ( const char* ) rev1_data, rev1_len );
+        auto rev2 = std::string_view( ( const char* ) rev2_data, rev2_len );
+
+        auto dash1 = rev1.find( '-' );
+        auto dash2 = rev2.find( '-' );
+
+        if ( ( dash1 == 1 && dash2 == 1 )
+            || dash1 > 8 || dash2 > 8
+            || dash1 == std::string_view::npos || dash2 == std::string_view::npos )
+        {
+            return defaultCollate( rev1, rev2 );
+        }
+
+        auto gen1_str = rev1.substr( 0, dash1 );
+        auto gen2_str = rev2.substr( 0, dash2 );
+
+        int gen1, gen2;
+        try
+        {
+            gen1 = std::stoi( gen1_str.data( ) );
+            gen2 = std::stoi( gen2_str.data( ) );
+        }
+        catch ( std::exception& e )
+        {
+            auto error = e.what( );
+
+            return defaultCollate( rev1, rev2 );
+        }
+
+        if ( gen1 == 0 || gen2 == 0 )
+        {
+            return defaultCollate( rev1, rev2 );
+        }
+
+        const auto difference = gen1 - gen2;
+        const auto result = difference > 0 ? 1 : ( difference < 0 ? -1 : 0 );
+        if ( result != 0 )
+        {
+            return result;
+        }
+
+        auto suffix1 = dash1 + 1;
+        auto suffix2 = dash2 + 1;
+
+        if ( rev1.size( ) > suffix1 && rev2.size( ) > suffix2 )
+        {
+            // Compare suffixes:
+            return defaultCollate( rev1.substr( suffix1 ), rev2.substr( suffix2 ) );
+        }
+
+        // Invalid format, fall back to compare as plain text:
+        return defaultCollate( rev1, rev2 );
+    }
+
+    template<typename Numeric>
+    static int32_t threeWayCompare(const Numeric& a, const Numeric& b)
+    {
+        const auto difference = a - b;
+        return difference > 0 ? 1 : ( difference < 0 ? -1 : 0 );
+    }
+
+    int32_t collateJSON( void* data, int js1_len, const void* js1_data, int js2_len, const void* js2_data )
+    {
+        auto js1 = std::string_view( ( const char* ) js1_data, js1_len );
+        auto js2 = std::string_view( ( const char* ) js2_data, js2_len );
+
+        int64_t i1,i2;
+#ifdef _MSC_VER
+        auto r1 = std::from_chars( js1.data( ), js1.data( ) + js1.size( ), i1 );
+        auto r2 = std::from_chars( js2.data( ), js2.data( ) + js2.size( ), i2 );
+#else
+        auto r1 = std::from_chars<int64_t>(js1.begin(), js1.end(), i1);
+        auto r2 = std::from_chars<int64_t>(js2.begin(), js2.end(), i2);
+#endif
+
+        auto no_error = std::errc();
+        
+        if (r1.ec == no_error && r2.ec == no_error)
+        {
+            // We got integers!
+            return threeWayCompare( i1, i2 );
+        }
+
+        // If they aren't integers let's try strings.
+
+        if ( js1.starts_with( "\"" ) )
+        {
+#ifdef _MSC_VER
+            const auto cmp = std::lexicographical_compare_three_way( js1.begin( ), js1.end( ), js2.begin( ), js2.end( ) );
+#else
+            const auto cmp = std::lexicographical_compare_three_way( js1.begin( ), js1.end( ), js2.begin( ), js2.end( ), cmp_icase );
+#endif
+            return ( cmp < 0 ) ? -1 : ( ( cmp == 0 ) ? 0 : 1 );
+        }
+        
+        // The disappointments continue: Clang doesn't have the std::from_chars overload for double or float...
+        // So we won't handle floats and doubles for now....
+
+        const nlohmann::json d1 = nlohmann::json::parse(js1);
+        const nlohmann::json d2 = nlohmann::json::parse(js2);
+
+        bool canCompare = d1 && d2;
+
+        if ( canCompare && (d1.type( ) == d2.type( ) ) )
+        {
+            if ( d1.is_number_integer() )
+            {
+                return threeWayCompare( std::int64_t(d1), std::int64_t(d2) );
+            }
+            else if ( d1.is_number_unsigned( ) )
+            {
+                return threeWayCompare( std::uint64_t( d1 ), std::uint64_t( d2 ) );
+            }
+            else if ( d1.is_number_float( ) )
+            {
+                return threeWayCompare( double(d1), double(d2) );
+            }
+            else if ( d1.is_boolean( ) )
+            {
+                return threeWayCompare( bool(d1), bool(d2) );
+            }
+            else if ( d1.is_array( ) )
+            {
+                assert( false ); // Not yet implemented
+            }
+        }
+
+        assert( false ); // wtf is this data?
+        return threeWayCompare( js1.size( ), js2.size( ) );
+    }
+
 
     /* A proper revision ID consists of a generation number, a hyphen, and an arbitrary suffix.
        Compare the generation numbers numerically, and then the suffixes lexicographically.
@@ -96,8 +278,11 @@ namespace db {
                                  kCBLCollateJSON_Raw, CBLCollateJSON);
         sqlite3_create_collation(dbHandle, "JSON_ASCII", SQLITE_UTF8,
                                  kCBLCollateJSON_ASCII, CBLCollateJSON);*/
-
-        createCollation (db, "REVID", CBLCollateRevIDs);
+        int result;
+        result = createCollation (db, "REVID", CBLCollateRevIDs);
+        assert( result == SQLITE_OK );
+        result = createCollation (db, "JSON", db::collateJSON);
+        assert( result == SQLITE_OK );
 
         db << "SELECT view_id FROM views;" >> [&] (const int id)
         {
