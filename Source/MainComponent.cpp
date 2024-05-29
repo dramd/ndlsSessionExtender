@@ -119,6 +119,14 @@ copyPrototypeDbWithBackup
     juce::File destination
 ) { 
     juce::File destination_backup = destination.withFileExtension(".sqlite3.backup");
+
+    if (!destination_backup.existsAsFile())
+    {
+        // First time use! This means the current version of the global DB is precious.
+        // Let's have it as an extra backup on the side.
+        juce::File vip_backup = destination.withFileExtension(".sqlite3.original");
+        destination.copyFileTo(vip_backup);
+    }
     destination.copyFileTo(destination_backup);
 
     source.copyFileTo(destination);
@@ -172,7 +180,7 @@ MainComponent::MainComponent()
                 {
                     opts = opts.withIconType(juce::MessageBoxIconType::InfoIcon)
                     .withTitle("Success")
-                    .withMessage("Session document updated")
+                    .withMessage("Session document updated. You can now close this application and launch Endlesss.")
                     .withButton("OK")
                     .withAssociatedComponent(this);
                 }
@@ -187,7 +195,7 @@ MainComponent::MainComponent()
                 juce::MessageBoxOptions()
                 .withIconType (juce::MessageBoxIconType::WarningIcon)
                 .withTitle ("Are you sure?")
-                .withMessage ("This is an unofficial tool that modifies Endlesss data and may break things!")
+                .withMessage ("This is an unofficial tool that modifies Endlesss data and may break things! Make sure to close Endlesss before continuing.")
                 .withButton ("OK")
                 .withButton ("Cancel")
                 .withAssociatedComponent (this),
