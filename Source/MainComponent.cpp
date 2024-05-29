@@ -7,6 +7,80 @@ static juce::File getEndlesssGlobalDatabase() {
 /** Someone should have invented a new endlesss by now */
 static juce::Time getY2038() { return { 2038, 1, 19,  3,  14,  7, 0, false }; }
 
+static juce::StringArray defaultRoles()
+{
+    juce::StringArray out;
+    out.add("user");
+
+    return out;
+}
+
+static
+juce::Result
+setExpires
+(
+    juce::DynamicObject &doc_session,
+    juce::Time           time
+) {
+    doc_session.setProperty("expires", getY2038().toMilliseconds());
+    return juce::Result::ok();
+}
+
+static
+juce::var
+createSession
+(
+    juce::String      user_id,
+    juce::StringArray jams        = {},
+    juce::StringArray roles       = defaultRoles(),
+    juce::Time        expiry_date = getY2038()
+) {
+    juce::Time created_and_issued = juce::Time::getCurrentTime() - juce::RelativeTime::minutes(1);
+
+    // -------------------------------------------------------------------------------
+    // Couch DB connection data that will be useless and ignored
+    juce::String couchdb_token    = "some-couch-db-token";
+    juce::String couchdb_password = "some-couch-db-session-pw";
+
+    juce::DynamicObject *user_dbs_obj = new juce::DynamicObject();
+    juce::String appdata_url = juce::String("https://") + couchdb_token + ":" + couchdb_password + "@data.endlesss.fm/user_appdata$" + user_id;
+    user_dbs_obj->setProperty("appdata", appdata_url);
+
+    // -------------------------------------------------------------------------------
+    // Profile data that just needs to match (mostly)
+    juce::DynamicObject *profile_obj = new juce::DynamicObject();
+    profile_obj->setProperty("type",          "user");
+    profile_obj->setProperty("bands",         jams);
+    profile_obj->setProperty("bio",           "Your bio that nobody can see now :(");
+    profile_obj->setProperty("displayName",   user_id);
+    profile_obj->setProperty("fullName",      user_id);
+
+    // -------------------------------------------------------------------------------
+    // Here comes the session
+    juce::DynamicObject *obj = new juce::DynamicObject();
+
+    obj->setProperty("type",           "Session");
+    obj->setProperty("app_version",    10000);
+
+    obj->setProperty("user_id",        user_id);
+    obj->setProperty("roles",          roles);
+    obj->setProperty("profile",        juce::var(profile_obj));
+
+    obj->setProperty("created",        created_and_issued.toMilliseconds());
+    obj->setProperty("issued",         created_and_issued.toMilliseconds());
+    obj->setProperty("expires",        expiry_date.toMilliseconds());
+
+    obj->setProperty("hash",           "");
+    obj->setProperty("ip",             "192.138.0.0");
+    obj->setProperty("isGuest",        false);
+    obj->setProperty("licenses",       juce::var());
+    obj->setProperty("provider",       "local");
+    obj->setProperty("token",          "some-couch-db-token");
+    obj->setProperty("password",       "some-couch-db-session-pw");
+    obj->setProperty("userDBs",        juce::var(user_dbs_obj));
+
+    return juce::var(obj);
+}
 
 
 
@@ -98,7 +172,7 @@ void MainComponent::setupButtonText()
 {
     if(db)
     {
-        auto document = db->getLocalDocument("ActiveSession");
+        juce::var document = db->getLocalDocument("ActiveSession");
         if(document.isObject() && document.hasProperty("user_id"))
         {
             juce::Time expiry { juce::int64(document["expires"]) };
@@ -118,15 +192,15 @@ juce::Result MainComponent::updateActiveSession()
         return juce::Result::fail("Database file could not be opened");
     }
 
-    auto document = db->getLocalDocument("ActiveSession");
+    juce::var document = db->getLocalDocument("ActiveSession");
     if(!document.isObject())
     {
         return juce::Result::fail("Did not find an active session");
     }
 
-    if(auto object = document.getDynamicObject())
+    if(juce::DynamicObject *object = document.getDynamicObject())
     {
-        object->setProperty("expires", getY2038().toMilliseconds());
+        setExpires(*object, getY2038());
     }
     db->setLocalDocument(document);
     return juce::Result::ok();
