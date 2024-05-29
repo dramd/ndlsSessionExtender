@@ -130,7 +130,6 @@ MainComponent::MainComponent()
 {
     setSize (320, 240);
     auto& lnf = getLookAndFeel();
-    lnf.setColour(juce::TextButton::ColourIds::buttonColourId, juce::Colours::red);
 
     if(getEndlesssGlobalDatabase().exists())
     {
