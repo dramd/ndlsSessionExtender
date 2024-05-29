@@ -1,10 +1,15 @@
 #include "MainComponent.h"
+#include "CouchbaseLite.h"
 
-juce::File getEndlesssGlobalDatabase() {
+static juce::File getEndlesssGlobalDatabase() {
     return juce::File::getSpecialLocation(juce::File::SpecialLocationType::userApplicationDataDirectory).getChildFile("Endlesss").getChildFile("production").getChildFile("Data").getChildFile("global.cblite2");
 };
 /** Someone should have invented a new endlesss by now */
-juce::Time getY2038() { return { 2038, 1, 19,  3,  14,  7, 0, false }; }
+static juce::Time getY2038() { return { 2038, 1, 19,  3,  14,  7, 0, false }; }
+
+
+
+
 //==============================================================================
 MainComponent::MainComponent()
 {
@@ -18,41 +23,55 @@ MainComponent::MainComponent()
         setupButtonText();
     }
     
-    bigRedButton.onClick = [this] {
+    bigRedButton.onClick = [this] 
+    {
         if(db)
         {
-            auto onMessageBoxResult = [this](int result){
-                if(result == 0)
+            auto onMessageBoxResult = [this](int result)
+            {
+                if(result != 0)
                 {
-                    if(db)
-                    {
-                        auto result = updateActiveSession();
-                        if(result.failed())
-                        {
-                            DBG(result.getErrorMessage());
-                        }
-                        else
-                        {
-                            setupButtonText();
-                        }
-                    }
+                    return;
+                }
+
+                if(!db)
+                {
+                    return;
+                }
+
+                juce::Result updateResult = updateActiveSession();
+                if(updateResult.failed())
+                {
+                    DBG(updateResult.getErrorMessage());
+                }
+                else
+                {
+                    setupButtonText();
                 }
             };
             
-            juce::NativeMessageBox::showAsync(juce::MessageBoxOptions()
-                                              .withIconType (juce::MessageBoxIconType::WarningIcon)
-                                              .withTitle ("Are you sure?")
-                                              .withMessage ("This is an unofficial tool that modifies Endlesss data and may break things!")
-                                              .withButton ("OK")
-                                              .withButton ("Cancel")
-                                              .withAssociatedComponent (this),
-                                              onMessageBoxResult);
+            juce::NativeMessageBox::showAsync
+            (
+                juce::MessageBoxOptions()
+                .withIconType (juce::MessageBoxIconType::WarningIcon)
+                .withTitle ("Are you sure?")
+                .withMessage ("This is an unofficial tool that modifies Endlesss data and may break things!")
+                .withButton ("OK")
+                .withButton ("Cancel")
+                .withAssociatedComponent (this),
+                onMessageBoxResult
+            );
         }
         else
         {
-            fileChooser = std::make_unique<juce::FileChooser> ("Please select Endlesss global.cblite2",
-                                                               juce::File::getSpecialLocation (juce::File::userApplicationDataDirectory),
-                                                       "*.cblite2", true, true);
+            fileChooser = std::make_unique<juce::FileChooser> 
+            (
+                "Please select Endlesss global.cblite2",
+                juce::File::getSpecialLocation (juce::File::userApplicationDataDirectory),
+                "*.cblite2",
+                true,
+                true
+            );
 
             auto folderChooserFlags = juce::FileBrowserComponent::openMode | juce::FileBrowserComponent::canSelectDirectories;
 
@@ -74,6 +93,7 @@ MainComponent::MainComponent()
 MainComponent::~MainComponent()
 {
 }
+
 void MainComponent::setupButtonText()
 {
     if(db)
@@ -93,31 +113,30 @@ void MainComponent::setupButtonText()
 
 juce::Result MainComponent::updateActiveSession()
 {
-    if(db)
+    if(!db)
     {
-        auto document = db->getLocalDocument("ActiveSession");
-        if(!document.isObject())
-            return juce::Result::fail("Did not find an active session");
-
-        if(auto object = document.getDynamicObject())
-        {
-            object->setProperty("expires", getY2038().toMilliseconds());
-        }
-        db->setLocalDocument(document);
-        return juce::Result::ok();
+        return juce::Result::fail("Database file could not be opened");
     }
-    return juce::Result::fail("Database file could not be opened");
+
+    auto document = db->getLocalDocument("ActiveSession");
+    if(!document.isObject())
+    {
+        return juce::Result::fail("Did not find an active session");
+    }
+
+    if(auto object = document.getDynamicObject())
+    {
+        object->setProperty("expires", getY2038().toMilliseconds());
+    }
+    db->setLocalDocument(document);
+    return juce::Result::ok();
 }
 //==============================================================================
 void MainComponent::paint (juce::Graphics& g)
 {
-    // (Our component is opaque, so we must completely fill the background with a solid colour)
 }
 
 void MainComponent::resized()
 {
-    // This is called when the MainComponent is resized.
-    // If you add any child components, this is where you should
-    // update their positions.
     bigRedButton.setBounds(getLocalBounds());
 }
