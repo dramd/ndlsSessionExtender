@@ -1,0 +1,11 @@
+# Add these lines to C:\Windows\System32\drivers\etc\hosts (open with notepad/editor)
+# Then open the commandline (Windows Key + R ==> enter `cmd`) and enter
+#     ipconfig /flushdns
+# to start rerouting traffic
+
+127.0.0.1             ndls-att2.ams3.digitaloceanspaces.com
+127.0.0.1             ndls-att0.fra1.digitaloceanspaces.com
+127.0.0.1             ndls-att1.nyc3.digitaloceanspaces.com
+127.0.0.1             endlesss-dev.fra1.digitaloceanspaces.com
+127.0.0.1             endlesss-dev.fra1.cdn.digitaloceanspaces.com
+127.0.0.1             ndls-att3.fra1.cdn.endlesss.fm
