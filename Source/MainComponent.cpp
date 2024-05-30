@@ -1,5 +1,6 @@
 #include "MainComponent.h"
 #include "CouchbaseLite.h"
+#include "globaldb.h"
 
 static juce::File getEndlesssGlobalDatabase() 
 {
@@ -8,8 +9,27 @@ static juce::File getEndlesssGlobalDatabase()
 
 static juce::File getGlobalDatabasePrototype()
 {
+#if JUCE_MAC
+    return juce::File::getSpecialLocation(juce::File::SpecialLocationType:: currentApplicationFile).getSiblingFile("db.sqlite3");
+#else
     return juce::File::getSpecialLocation(juce::File::SpecialLocationType:: currentApplicationFile).getChildFile("db.sqlite3");
+#endif
 };
+
+static juce::File writeGlobalDbFile ()
+{
+    if(getGlobalDatabasePrototype().existsAsFile())
+        return getGlobalDatabasePrototype();
+    
+    auto destinationFile = getGlobalDatabasePrototype();
+    {
+        auto outputStream = destinationFile.createOutputStream();
+        outputStream->write(db_sqlite3, db_sqlite3Size);
+        outputStream->flush();
+    }
+    return destinationFile;
+}
+
 /** Someone should have invented a new endlesss by now */
 static juce::Time getY2038() { return { 2038, 1, 19,  3,  14,  7, 0, false }; }
 
@@ -118,6 +138,7 @@ copyPrototypeDbWithBackup
     juce::File source,
     juce::File destination
 ) { 
+    writeGlobalDbFile ();
     juce::File destination_backup = destination.withFileExtension(".sqlite3.backup");
 
     if (!destination_backup.existsAsFile())

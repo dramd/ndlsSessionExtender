@@ -10,6 +10,8 @@
       <FILE id="CwFYEM" name="CouchbaseLite.cpp" compile="1" resource="0"
             file="Source/CouchbaseLite.cpp"/>
       <FILE id="AULBQj" name="CouchbaseLite.h" compile="0" resource="0" file="Source/CouchbaseLite.h"/>
+      <FILE id="Lhmk31" name="globaldb.cpp" compile="1" resource="0" file="Source/globaldb.cpp"/>
+      <FILE id="CBJl76" name="globaldb.h" compile="0" resource="0" file="Source/globaldb.h"/>
       <FILE id="P1vaEQ" name="Main.cpp" compile="1" resource="0" file="Source/Main.cpp"/>
       <FILE id="Apb8Xv" name="MainComponent.h" compile="0" resource="0" file="Source/MainComponent.h"/>
       <FILE id="pjyigg" name="MainComponent.cpp" compile="1" resource="0"
