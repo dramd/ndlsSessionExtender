@@ -2,9 +2,11 @@
 
 <JUCERPROJECT id="L1c8oG" name="ndlsSessionExtender" projectType="guiapp" useAppConfig="0"
               addUsingNamespaceToJuceHeader="0" jucerFormatVersion="1" cppLanguageStandard="latest"
-              headerPath="../../3rdParty/sqlite_modern_cpp/hdr">
+              headerPath="../../3rdParty/sqlite_modern_cpp/hdr&#10;../../3rdParty/sqlite3&#10;../../3rdParty/json/include">
   <MAINGROUP id="cZFuPD" name="ndlsSessionExtender">
     <GROUP id="{F38B4EBF-3AD5-B590-A857-A738A8BAB855}" name="Source">
+      <FILE id="a0jz2B" name="Sqlite3Almagamation.c" compile="1" resource="0"
+            file="Source/Sqlite3Almagamation.c"/>
       <FILE id="CwFYEM" name="CouchbaseLite.cpp" compile="1" resource="0"
             file="Source/CouchbaseLite.cpp"/>
       <FILE id="AULBQj" name="CouchbaseLite.h" compile="0" resource="0" file="Source/CouchbaseLite.h"/>
@@ -23,7 +25,7 @@
   </MODULES>
   <JUCEOPTIONS JUCE_STRICT_REFCOUNTEDPOINTER="1"/>
   <EXPORTFORMATS>
-    <VS2022 targetFolder="Builds/VisualStudio2022" externalLibraries="sqlite3">
+    <VS2022 targetFolder="Builds/VisualStudio2022">
       <CONFIGURATIONS>
         <CONFIGURATION isDebug="1" name="Debug" targetName="ndlsSessionExtender"/>
         <CONFIGURATION isDebug="0" name="Release" targetName="ndlsSessionExtender"/>

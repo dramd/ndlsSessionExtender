@@ -1,11 +1,11 @@
 #pragma once
+#include <JuceHeader.h>
 
-#include "CouchbaseLite.h"
-//==============================================================================
-/*
-    This component lives inside our window, and this is where you should put all
-    your controls and content.
-*/
+namespace db
+{
+    class CouchbaseLiteDatabase;
+}
+
 class MainComponent  : public juce::Component
 {
 public:
@@ -17,14 +17,13 @@ public:
     void paint (juce::Graphics&) override;
     void resized() override;
     
-    void setupButtonText();
+    void syncUiState();
 
     juce::Result updateActiveSession();
 
 private:
-    //==============================================================================
-    // Your private member variables go here...
-    juce::TextButton bigRedButton { "Go!" };
+    juce::TextEditor editor_username; 
+    juce::TextButton btn_apply { "Go!" };
     std::unique_ptr<db::CouchbaseLiteDatabase> db;
     std::unique_ptr<juce::FileChooser> fileChooser;
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (MainComponent)
