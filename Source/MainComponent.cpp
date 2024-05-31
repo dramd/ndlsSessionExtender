@@ -36,21 +36,17 @@ static juce::File getEndlesssGlobalDatabase()
 
 static juce::File getGlobalDatabasePrototype()
 {
-#if JUCE_MAC
-    return juce::File::getSpecialLocation(juce::File::SpecialLocationType:: currentApplicationFile).getSiblingFile("db.sqlite3");
-#else
-    return juce::File::getSpecialLocation(juce::File::SpecialLocationType:: currentApplicationFile).getChildFile("db.sqlite3");
-#endif
+    return juce::File::getSpecialLocation(juce::File::SpecialLocationType::currentApplicationFile).getSiblingFile("db.sqlite3");
 };
 
 static juce::File writeGlobalDbFile ()
 {
     DBG("writeGlobalDbFile");
-    if(getGlobalDatabasePrototype().existsAsFile()){
+    auto destinationFile = getGlobalDatabasePrototype();
+    if(destinationFile.existsAsFile()){
         DBG("Global Database Prototype already exists @ " << getGlobalDatabasePrototype().getFullPathName());
         return getGlobalDatabasePrototype();
     }
-    auto destinationFile = getGlobalDatabasePrototype();
     DBG("Creating Global Database File from binary data @ " << destinationFile.getFullPathName());
     {
         auto outputStream = destinationFile.createOutputStream();
